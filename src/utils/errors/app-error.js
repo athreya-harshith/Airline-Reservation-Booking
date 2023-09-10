@@ -8,5 +8,5 @@ class AppError extends Error
        
     }
 }
-// we have captureStackTrace() method thats used to write down all the errors
+// the captureStackTrace() method thats used to write down all the errors
 module.exports = AppError;
