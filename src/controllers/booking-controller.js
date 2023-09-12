@@ -17,6 +17,7 @@ async function createBooking(req,res)
         return res.status(StatusCodes.OK).json(SuccessResponse);
     } catch (error) {
         ErrorResponse.message = 'Unable to perform the requested action , failed to get the flight';
+        ErrorResponse.error = error;
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json(ErrorResponse);
     }
 }
