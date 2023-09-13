@@ -2,6 +2,9 @@ const {StatusCodes} = require('http-status-codes');
 const {Booking} = require('../models');
 const CrudRepository = require('./crud-repository');
 const AppError = require('../utils/errors/app-error');
+const {Op} = require('sequelize');
+const {Enums} = require('../utils/common');
+const {INITIATED,PENDING,BOOKED,CANCELLED} = Enums.BOOKING_STATUS;
 class BookingRepository extends CrudRepository
 {
     constructor(Booking)
@@ -33,6 +36,34 @@ class BookingRepository extends CrudRepository
         if(!(response[0]))// because it gives the data as an array 
             throw new AppError('Requested Resource not found to update',StatusCodes.NOT_FOUND);
         return response;
+    }
+    async  cancelOldBookings(timestamp)
+    {
+        console.log('in repository cancelOldBookings')
+        const response = await Booking.update({
+            status:CANCELLED
+        },
+        {
+            where:{
+                [Op.and]:[{
+                    createdAt:{
+                        [Op.lt]:timestamp
+                    }
+                },
+                {
+                    status:{
+                        [Op.ne]:BOOKED
+                    }
+                },
+                {
+                    status:{
+                        [Op.ne]:CANCELLED
+                    }
+                }
+            ]
+            }
+        });
+    return response;
     }
 }
 
