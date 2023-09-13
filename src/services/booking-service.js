@@ -5,15 +5,15 @@ const { ServerConfig } = require('../config');
 const AppError = require('../utils/errors/app-error');
 const { StatusCodes } = require('http-status-codes');
 const bookingRepository = new BookingRepository();
+const {Enums} = require('../utils/common');
+const {INITIATED,PENDING,BOOKED,CANCELLED} = Enums.BOOKING_STATUS;
 async function createBooking(data)
 {
-    const transaction = await db.sequelize.transaction();
+    const transaction = await db.sequelize.transaction();// unmanaged transaction
     try {
-            // console.log(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${data.flightId}`);
             const flight =await axios.get(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${data.flightId}`); // this throws an error but not handled
             const flightData = flight.data;
             console.log(flightData);
-            // console.log(data.noOfSeats);
             if(data.noOfSeats>flightData.data.totalSeats)
                 throw new AppError('No Enough Seats Available',StatusCodes.BAD_REQUEST) ;
             // the noOfSeats is requested is less than or equal to the total Remaining Seats
@@ -26,7 +26,7 @@ async function createBooking(data)
             // /api/v1/flights/:id/seats PATCH
             await axios.patch(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${data.flightId}/seats`,{
                 seats:data.noOfSeats
-                // this is the request body sent through the patch
+                // this is the request body sent through the patch using axios
             });
             await transaction.commit();
             return booking;
@@ -35,6 +35,54 @@ async function createBooking(data)
         throw error;
     }
 }
+
+async function makePayment(data)
+{
+    //data : {bookingId,flightId,userId}
+    const transaction = await db.sequelize.transaction();
+    console.log('inside makePayment Service')
+    let explanation = [];
+    try {
+        const bookingDetails = await bookingRepository.get(data.bookingId,transaction);
+        if(bookingDetails.status == CANCELLED)
+        {
+            throw new AppError('Booking Has Expired',StatusCodes.BAD_REQUEST);
+        }
+        const bookingTime = new Date(bookingDetails.createdAt);
+        const currentTime = new Date();
+        if(currentTime-bookingTime > 300000)
+        {
+            // if the time is above 5mins (300000 ms ) updated the booking status to cancelled and throw a error
+            await bookingRepository.update(data.bookingId,{status:CANCELLED},transaction);
+            throw new AppError('Booking Has Expired',StatusCodes.BAD_REQUEST);
+        }
+        if(bookingDetails.totalCost != data.totalCost && bookingDetails.userId != data.userId)
+        {
+            explanation.push('The amount of payment doesnot match');
+            explanation.push('The user corresponding to the booking doesnot match');
+            throw new AppError(explanation,StatusCodes.BAD_REQUEST);
+        } 
+        else if(bookingDetails.totalCost != data.totalCost)
+        {
+            explanation.push('The amount of payment doesnot match')
+            throw new AppError(explanation,StatusCodes.BAD_REQUEST);
+        }
+        else if(bookingDetails.userId != data.userId)
+        {
+            explanation.push('The user corresponding to the booking doesnot match')
+            throw new AppError(explanation,StatusCodes.BAD_REQUEST);
+        }
+           
+        // now payment is successfull
+        //now change the status of booking from INITIATED to BOOKED
+        const response = await bookingRepository.update(data.bookingId,{status:BOOKED},transaction);
+        await transaction.commit();
+    } catch (error) {
+        await transaction.rollback();
+        throw error;
+    }
+}
 module.exports= {
-    createBooking
+    createBooking,
+    makePayment
 }
