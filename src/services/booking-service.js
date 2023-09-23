@@ -1,7 +1,7 @@
 const axios = require('axios');
 const {BookingRepository} = require('../repositories');
 const db = require('../models');
-const { ServerConfig } = require('../config');
+const { ServerConfig,MessageQueue } = require('../config');
 const AppError = require('../utils/errors/app-error');
 const { StatusCodes } = require('http-status-codes');
 const bookingRepository = new BookingRepository();
@@ -77,12 +77,35 @@ async function makePayment(data)
         // now payment is successfull
         //now change the status of booking from INITIATED to BOOKED
         const response = await bookingRepository.update(data.bookingId,{status:BOOKED},transaction);
+        console.log('booking is done here');
         await transaction.commit();
+        publishToQueue(data.userId,data.bookingId,bookingDetails.flightId);
     } catch (error) {
         // console.log(error);
         await transaction.rollback();
         throw error;
     }
+}
+async function publishToQueue(userId,bookingId,flightId)
+{
+    try {
+        const user = await axios.get(`${ServerConfig.API_GATEWAY}/api/v1/user/${userId}`);
+        const userData= user.data.data;
+        const flight =await axios.get(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${flightId}`); // this throws an error but not handled
+        const flightData = flight.data.data;
+        // console.log(flightData);
+        let arrivalTime = new Date(flightData.arrivalTime);
+        let departureTime = new Date(flightData.departureTime);
+        const textToSend = `Booking successfully done for the flight with booking id : ${bookingId}\nThe flight details are as such :\nFlight Number : ${flightData.flightNumber}\nDeparture Airport Id : ${flightData.departureAirportId}\nArrival Airport Id : ${flightData.arrivalAirportId}\nArrival Time : ${arrivalTime} \n Departure Time : ${departureTime}\n Wishing You a safe and happy journey`;
+        MessageQueue.sendData({
+            recepientEmail:userData.email,
+            subject:'Flight Booked',
+            text:textToSend
+        });
+    } catch (error) {
+        console.log(error);
+    }
+    
 }
 async function cancelBooking(bookingId)
 {
