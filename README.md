@@ -53,7 +53,7 @@ POST on => localhost:4000/api/v1/bookings
 * Else the booking state turns out to **CANCELLED** from initiated .
 * The database snapshot at the time of booking creation.
 ```
-27 |        6 |      4 | initiated |        10 |     22500 | 2023-10-10 04:43:02 | 2023-10-10 04:43:02 |
+27 | 6 | 4 | initiated | 10 | 22500 | 2023-10-10 04:43:02 | 2023-10-10 04:43:02 |
 ```
 * All the above operations will be done as a single transaction.
 
@@ -84,7 +84,7 @@ POST on => localhost:4000/api/v1/bookings/payments
 * Once the payment is completed , booking status changes to **BOOKED**
 * The database snapshot is ,
 ```
-27 |        6 |      4 | booked    |        10 |     22500 | 2023-10-10 04:43:02 | 2023-10-10 04:45:37
+27 | 6 | 4 | booked | 10 | 22500 | 2023-10-10 04:43:02 | 2023-10-10 04:45:37
 ```
 
 * ## Payments API
