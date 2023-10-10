@@ -108,4 +108,15 @@ POST on => localhost:4000/api/v1/bookings/payments
 * RabbitMQ is a popular message queue to handle some quiet amount of capacity .
 * Once the payment is committed , the payments service publish an event consisting of `userId` , `bookingId`, and `flightId`.
 * This event will be consumed by Notifcation Service to send the notifications.
+* ## Additional Information 
+* Before accessing the Booking Service make sure the Flights Service is running.
+* The booking service requires RabbtiMQ also , hence it must be running in the backgound.
+* To turn on the RabbitMQ on **MAC**
+```
+ brew services start rabbitMQ
+```
+* To stop it , use 
+```
+brew services stop rabbitMQ
+```
 
